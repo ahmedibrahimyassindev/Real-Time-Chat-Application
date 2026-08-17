@@ -14,7 +14,7 @@ import { mockUsers } from '@/mocks/data'
 import { useChatStore } from '@/stores/chat.store'
 import { usePresenceStore } from '@/stores/presence.store'
 import { useWebSocketStore } from '@/stores/websocket.store'
-import type { Message } from '@/types/message'
+import type { Attachment, Message } from '@/types/message'
 
 const chatStore = useChatStore()
 const presenceStore = usePresenceStore()
@@ -24,6 +24,9 @@ const { isConnected, latestEvent, connect, disconnect, simulateConnectionLoss } 
 const { notifyTyping, stopTyping } = useTyping()
 
 const activeConversation = computed(() => chatStore.activeConversation)
+const replyToMessage = computed(() =>
+  chatStore.messages.find((message) => message.id === chatStore.replyToMessageId)
+)
 const activeTypingNames = computed(() =>
   chatStore.activeTypingUserIds
     .filter((userId) => userId !== currentUser.value?.id)
@@ -78,12 +81,12 @@ function simulateIncomingActivity() {
   }, 1600)
 }
 
-function sendMessage(body: string) {
+function sendMessage(body: string, attachments: Attachment[]) {
   if (!currentUser.value) {
     return
   }
 
-  chatStore.sendMessage(body, currentUser.value.id)
+  chatStore.sendMessage(body, currentUser.value.id, attachments)
 }
 
 function handleTyping() {
@@ -186,12 +189,18 @@ onUnmounted(() => {
 
         <MessageList
           :messages="chatStore.activeMessages"
+          :all-messages="chatStore.messages"
           :users="mockUsers"
           :current-user-id="currentUser?.id ?? ''"
           :has-older-messages="chatStore.hasOlderMessages"
           @load-older="chatStore.loadOlderMessages"
           @edit="chatStore.editMessage"
           @delete="chatStore.deleteMessage"
+          @reply="chatStore.setReplyTarget"
+          @react="
+            (messageId, emoji) =>
+              currentUser && chatStore.toggleReaction(messageId, emoji, currentUser.id)
+          "
         />
 
         <div class="h-7 px-6 text-xs text-slate-500">
@@ -202,7 +211,12 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <MessageComposer @send="sendMessage" @typing="handleTyping" />
+        <MessageComposer
+          :reply-to-message="replyToMessage"
+          @send="sendMessage"
+          @typing="handleTyping"
+          @cancel-reply="chatStore.setReplyTarget(null)"
+        />
       </div>
     </section>
   </ChatLayout>

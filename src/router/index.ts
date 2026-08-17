@@ -4,6 +4,7 @@ import ChatPage from '@/pages/ChatPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
+import SearchPage from '@/pages/SearchPage.vue'
 import { useAuthStore } from '@/stores/auth.store'
 
 export const router = createRouter({
@@ -35,6 +36,12 @@ export const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: ProfilePage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: SearchPage,
       meta: { requiresAuth: true }
     }
   ]

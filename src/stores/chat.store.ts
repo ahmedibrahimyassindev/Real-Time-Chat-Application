@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { mockConversations, mockMessages } from '@/mocks/data'
 import type { MockWebSocketEvent } from '@/mocks/websocket/mockWebSocket'
 import type { Conversation } from '@/types/conversation'
-import type { Message } from '@/types/message'
+import type { Attachment, Message } from '@/types/message'
 
 const pageSize = 4
 
@@ -18,6 +18,7 @@ export const useChatStore = defineStore('chat', {
     conversations: [...mockConversations] as Conversation[],
     messages: [...mockMessages] as Message[],
     activeConversationId: mockConversations[0]?.id ?? '',
+    replyToMessageId: null as string | null,
     typingUserIdsByConversation: {} as Record<string, string[]>,
     visibleMessageCounts: Object.fromEntries(
       mockConversations.map((conversation) => [conversation.id, pageSize])
@@ -89,10 +90,13 @@ export const useChatStore = defineStore('chat', {
       const currentCount = this.visibleMessageCounts[this.activeConversationId] ?? pageSize
       this.visibleMessageCounts[this.activeConversationId] = currentCount + pageSize
     },
-    sendMessage(body: string, senderId: string) {
+    setReplyTarget(messageId: string | null) {
+      this.replyToMessageId = messageId
+    },
+    sendMessage(body: string, senderId: string, attachments: Attachment[] = []) {
       const trimmedBody = body.trim()
 
-      if (!trimmedBody || !this.activeConversationId) {
+      if ((!trimmedBody && attachments.length === 0) || !this.activeConversationId) {
         return
       }
 
@@ -102,13 +106,15 @@ export const useChatStore = defineStore('chat', {
         conversationId: this.activeConversationId,
         senderId,
         body: trimmedBody,
+        replyToMessageId: this.replyToMessageId ?? undefined,
         status: 'sent',
         reactions: [],
-        attachments: [],
+        attachments,
         createdAt: now
       }
 
       this.messages.push(message)
+      this.replyToMessageId = null
       window.setTimeout(() => {
         this.markMessageDelivered(message.id)
       }, 500)
@@ -179,6 +185,41 @@ export const useChatStore = defineStore('chat', {
       const typingUserIds = this.typingUserIdsByConversation[conversationId] ?? []
       this.typingUserIdsByConversation[conversationId] = typingUserIds.filter(
         (typingUserId) => typingUserId !== userId
+      )
+    },
+    toggleReaction(messageId: string, emoji: string, userId: string) {
+      const message = this.messages.find((item) => item.id === messageId)
+
+      if (!message) {
+        return
+      }
+
+      const reaction = message.reactions.find((item) => item.emoji === emoji)
+
+      if (!reaction) {
+        message.reactions.push({ emoji, count: 1, userIds: [userId] })
+        return
+      }
+
+      if (reaction.userIds.includes(userId)) {
+        reaction.userIds = reaction.userIds.filter((item) => item !== userId)
+        reaction.count = reaction.userIds.length
+        message.reactions = message.reactions.filter((item) => item.count > 0)
+        return
+      }
+
+      reaction.userIds.push(userId)
+      reaction.count = reaction.userIds.length
+    },
+    searchMessages(query: string) {
+      const normalizedQuery = query.trim().toLowerCase()
+
+      if (!normalizedQuery) {
+        return []
+      }
+
+      return sortMessages(
+        this.messages.filter((message) => message.body.toLowerCase().includes(normalizedQuery))
       )
     }
   }

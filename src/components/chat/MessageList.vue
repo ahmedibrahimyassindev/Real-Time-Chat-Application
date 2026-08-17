@@ -6,6 +6,7 @@ import type { User } from '@/types/user'
 
 defineProps<{
   messages: Message[]
+  allMessages: Message[]
   users: User[]
   currentUserId: string
   hasOlderMessages: boolean
@@ -15,10 +16,16 @@ defineEmits<{
   loadOlder: []
   edit: [messageId: string, body: string]
   delete: [messageId: string]
+  reply: [messageId: string]
+  react: [messageId: string, emoji: string]
 }>()
 
 function findSender(users: User[], senderId: string) {
   return users.find((user) => user.id === senderId)
+}
+
+function findMessage(messages: Message[], messageId?: string) {
+  return messages.find((message) => message.id === messageId)
 }
 </script>
 
@@ -38,10 +45,13 @@ function findSender(users: User[], senderId: string) {
         v-for="message in messages"
         :key="message.id"
         :message="message"
+        :reply-to-message="findMessage(allMessages, message.replyToMessageId)"
         :sender="findSender(users, message.senderId)"
         :is-own-message="message.senderId === currentUserId"
         @edit="(messageId, body) => $emit('edit', messageId, body)"
         @delete="(messageId) => $emit('delete', messageId)"
+        @reply="(messageId) => $emit('reply', messageId)"
+        @react="(messageId, emoji) => $emit('react', messageId, emoji)"
       />
     </div>
 

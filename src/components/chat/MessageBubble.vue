@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, CheckCheck, Pencil, Trash2, X } from '@lucide/vue'
+import { Check, CheckCheck, Paperclip, Pencil, Reply, Trash2, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 
 import type { Message } from '@/types/message'
@@ -8,6 +8,7 @@ import { formatMessageTime } from '@/utils/date'
 
 const props = defineProps<{
   message: Message
+  replyToMessage?: Message
   sender?: User
   isOwnMessage: boolean
 }>()
@@ -15,6 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   edit: [messageId: string, body: string]
   delete: [messageId: string]
+  reply: [messageId: string]
+  react: [messageId: string, emoji: string]
 }>()
 
 const isEditing = ref(false)
@@ -27,6 +30,13 @@ const statusIcon = computed(() => {
 
   return Check
 })
+const reactionOptions = ['👍', '❤️', '🚀']
+const messageParts = computed(() =>
+  props.message.body.split(/(@[a-z0-9_-]+)/gi).map((part) => ({
+    text: part,
+    isMention: part.startsWith('@')
+  }))
+)
 
 watch(
   () => props.message.body,
@@ -64,6 +74,13 @@ function saveEdit() {
             : 'border-slate-800 bg-slate-900 text-slate-100'
         "
       >
+        <p
+          v-if="replyToMessage"
+          class="mb-2 rounded-md border border-slate-700/70 bg-slate-950/40 px-2 py-1 text-xs"
+          :class="isOwnMessage ? 'text-slate-700' : 'text-slate-400'"
+        >
+          {{ replyToMessage.body }}
+        </p>
         <form v-if="isEditing" class="flex gap-2" @submit.prevent="saveEdit">
           <input
             v-model="draftBody"
@@ -74,12 +91,49 @@ function saveEdit() {
             Save
           </button>
         </form>
-        <p v-else class="whitespace-pre-wrap leading-6">{{ message.body }}</p>
+        <p v-else class="whitespace-pre-wrap leading-6">
+          <span
+            v-for="(part, index) in messageParts"
+            :key="`${part.text}-${index}`"
+            :class="part.isMention ? 'font-semibold text-cyan-200' : ''"
+          >
+            {{ part.text }}
+          </span>
+        </p>
+
+        <div v-if="message.attachments.length" class="mt-3 grid gap-2">
+          <div
+            v-for="attachment in message.attachments"
+            :key="attachment.id"
+            class="flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-950/40 px-2 py-1 text-xs"
+          >
+            <Paperclip class="size-3.5" />
+            <span class="truncate">{{ attachment.fileName }}</span>
+          </div>
+        </div>
       </div>
 
       <div class="mt-1 flex items-center gap-2" :class="{ 'justify-end': isOwnMessage }">
+        <button
+          v-for="emoji in reactionOptions"
+          :key="emoji"
+          class="rounded-md px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
+          type="button"
+          @click="$emit('react', message.id, emoji)"
+        >
+          {{ emoji }}
+          {{ message.reactions.find((reaction) => reaction.emoji === emoji)?.count || '' }}
+        </button>
         <component :is="statusIcon" v-if="isOwnMessage" class="size-3.5 text-slate-500" />
         <span v-if="message.updatedAt" class="text-xs text-slate-500">edited</span>
+        <button
+          class="hidden rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-white group-hover:inline-flex"
+          type="button"
+          aria-label="Reply to message"
+          @click="$emit('reply', message.id)"
+        >
+          <Reply class="size-3.5" />
+        </button>
         <button
           v-if="isOwnMessage"
           class="hidden rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-white group-hover:inline-flex"

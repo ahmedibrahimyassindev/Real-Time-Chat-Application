@@ -15,7 +15,7 @@ export const mockMessages: Message[] = [
     id: 'message-2',
     conversationId: 'conversation-sarah',
     senderId: 'user-sarah',
-    body: 'Yes, I will check spacing and mobile behavior today.',
+    body: 'Yes, @ahmed I will check spacing and mobile behavior today.',
     status: 'delivered',
     reactions: [{ emoji: '👍', count: 1, userIds: ['user-ahmed'] }],
     attachments: [],

@@ -19,6 +19,7 @@ export interface Message {
   conversationId: string
   senderId: string
   body: string
+  replyToMessageId?: string
   status: MessageDeliveryStatus
   reactions: MessageReaction[]
   attachments: Attachment[]

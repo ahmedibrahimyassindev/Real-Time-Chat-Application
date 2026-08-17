@@ -13,6 +13,8 @@ export default [
     languageOptions: {
       globals: {
         crypto: 'readonly',
+        Event: 'readonly',
+        HTMLInputElement: 'readonly',
         localStorage: 'readonly',
         URL: 'readonly',
         window: 'readonly'
