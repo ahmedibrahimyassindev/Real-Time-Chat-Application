@@ -1,8 +1,7 @@
 import { http, HttpResponse } from 'msw'
 
+import { apiBaseUrl } from '@/config/api'
 import { currentUserId, mockUsers } from '@/mocks/data'
-
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
 
 export const authHandlers = [
   http.post(`${apiBaseUrl}/auth/login`, () => {
@@ -14,7 +13,7 @@ export const authHandlers = [
 
     return HttpResponse.json({
       user,
-      token: 'mock-access-token'
+      accessToken: 'mock-access-token'
     })
   }),
   http.post(`${apiBaseUrl}/auth/register`, async ({ request }) => {
@@ -25,12 +24,13 @@ export const authHandlers = [
         id: 'user-new',
         name: input.name ?? 'New User',
         email: input.email ?? 'new-user@example.com',
+        avatarUrl: null,
         status: 'online'
       },
-      token: 'mock-access-token'
+      accessToken: 'mock-access-token'
     })
   }),
-  http.get(`${apiBaseUrl}/me`, () => {
+  http.get(`${apiBaseUrl}/users/me`, () => {
     const user = mockUsers.find((mockUser) => mockUser.id === currentUserId)
 
     if (!user) {

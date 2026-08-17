@@ -1,9 +1,8 @@
 import { http, HttpResponse } from 'msw'
 
+import { apiBaseUrl } from '@/config/api'
 import { mockDatabase } from '@/mocks/data'
 import type { Attachment } from '@/types/message'
-
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
 
 export const chatHandlers = [
   http.get(`${apiBaseUrl}/users`, () => HttpResponse.json(mockDatabase.users)),

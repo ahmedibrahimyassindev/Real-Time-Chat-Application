@@ -1,19 +1,35 @@
 import { http } from './http'
+import { mapUser, type BackendUser } from './backendAdapters'
 
 import type { LoginInput, RegisterInput } from '@/schemas/auth.schema'
-import type { User } from '@/types/user'
+
+interface BackendAuthResponse {
+  accessToken: string
+  user: BackendUser
+}
 
 export async function login(input: LoginInput) {
-  const response = await http.post<{ user: User; token: string }>('/auth/login', input)
-  return response.data
+  const response = await http.post<BackendAuthResponse>('/auth/login', input)
+  return {
+    token: response.data.accessToken,
+    user: mapUser(response.data.user)
+  }
 }
 
 export async function register(input: RegisterInput) {
-  const response = await http.post<{ user: User; token: string }>('/auth/register', input)
-  return response.data
+  const response = await http.post<BackendAuthResponse>('/auth/register', {
+    name: input.name,
+    email: input.email,
+    password: input.password
+  })
+
+  return {
+    token: response.data.accessToken,
+    user: mapUser(response.data.user)
+  }
 }
 
 export async function getSessionUser() {
-  const response = await http.get<User>('/me')
-  return response.data
+  const response = await http.get<BackendUser>('/users/me')
+  return mapUser(response.data)
 }
