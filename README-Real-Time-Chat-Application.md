@@ -9,7 +9,7 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 8 notifications implemented
+> **Current Status:** Phase 9 quality tooling implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
@@ -25,6 +25,8 @@ component-driven development.
 > member management, and permission-aware controls. Notifications now include
 > a notification center, unread badge, mark-as-read actions, and simulated
 > real-time delivery.
+> Quality tooling now includes Vitest, Playwright, Storybook, accessibility
+> review notes, performance review notes, and responsive test coverage.
 
 ---
 
@@ -943,12 +945,12 @@ Logout
 
 ### Phase 9 - Quality
 
-- [ ] Vitest test suite
-- [ ] Playwright E2E tests
-- [ ] Storybook stories
-- [ ] Accessibility review
-- [ ] Performance review
-- [ ] Responsive testing
+- [x] Vitest test suite
+- [x] Playwright E2E tests
+- [x] Storybook stories
+- [x] Accessibility review
+- [x] Performance review
+- [x] Responsive testing
 
 ### Phase 10 - Docker
 
@@ -970,8 +972,9 @@ Current implementation status:
 - Phase 6 advanced messaging is implemented.
 - Phase 7 channels are implemented.
 - Phase 8 notifications are implemented.
+- Phase 9 quality tooling is implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Quality tooling beyond lint/build has not yet been implemented.
+- Docker has not yet been implemented.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application
@@ -997,7 +1000,10 @@ http://localhost:5173
 ```bash
 npm run lint
 npm run format:check
+npm run test
+npm run test:e2e
 npm run build
+npm run build-storybook
 ```
 
 ---

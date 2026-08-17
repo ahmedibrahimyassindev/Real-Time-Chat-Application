@@ -64,8 +64,8 @@ function logout() {
         </button>
       </div>
     </header>
-    <div class="grid min-h-0 grid-cols-[260px_1fr]">
-      <aside class="border-r border-slate-800 bg-slate-900 p-4">
+    <div class="grid min-h-0 grid-cols-1 lg:grid-cols-[260px_1fr]">
+      <aside class="hidden border-r border-slate-800 bg-slate-900 p-4 lg:block">
         <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Workspace</p>
         <p class="mt-3 truncate text-sm text-slate-200">{{ currentUser?.name }}</p>
       </aside>

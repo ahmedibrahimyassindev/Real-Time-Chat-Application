@@ -171,8 +171,12 @@ onUnmounted(() => {
 
 <template>
   <ChatLayout>
-    <section class="grid min-h-0 grid-cols-[280px_1fr]">
-      <aside class="min-h-0 border-r border-slate-800 bg-slate-950 p-4">
+    <section
+      class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] xl:grid-cols-[280px_1fr] xl:grid-rows-1"
+    >
+      <aside
+        class="max-h-48 overflow-y-auto border-b border-slate-800 bg-slate-950 p-4 xl:max-h-none xl:border-b-0 xl:border-r"
+      >
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-200">Conversations</h2>
         </div>

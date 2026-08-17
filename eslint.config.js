@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint'
 
 export default [
   {
-    ignores: ['dist', 'node_modules', 'postcss.config.cjs']
+    ignores: ['dist', 'node_modules', 'storybook-static', 'postcss.config.cjs']
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
