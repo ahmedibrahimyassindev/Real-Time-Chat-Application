@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { Check, CheckCheck, Paperclip, Pencil, Reply, Trash2, X } from '@lucide/vue'
+import {
+  AlertCircle,
+  Check,
+  CheckCheck,
+  Clock,
+  Paperclip,
+  Pencil,
+  RefreshCw,
+  Reply,
+  Trash2,
+  X
+} from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 
 import type { Message } from '@/types/message'
@@ -18,12 +29,21 @@ const emit = defineEmits<{
   delete: [messageId: string]
   reply: [messageId: string]
   react: [messageId: string, emoji: string]
+  retry: [messageId: string]
 }>()
 
 const isEditing = ref(false)
 const draftBody = ref(props.message.body)
 
 const statusIcon = computed(() => {
+  if (props.message.status === 'sending') {
+    return Clock
+  }
+
+  if (props.message.status === 'failed') {
+    return AlertCircle
+  }
+
   if (props.message.status === 'read') {
     return CheckCheck
   }
@@ -124,7 +144,21 @@ function saveEdit() {
           {{ emoji }}
           {{ message.reactions.find((reaction) => reaction.emoji === emoji)?.count || '' }}
         </button>
-        <component :is="statusIcon" v-if="isOwnMessage" class="size-3.5 text-slate-500" />
+        <component
+          :is="statusIcon"
+          v-if="isOwnMessage"
+          class="size-3.5"
+          :class="message.status === 'failed' ? 'text-red-400' : 'text-slate-500'"
+        />
+        <button
+          v-if="isOwnMessage && message.status === 'failed'"
+          class="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-red-300 hover:bg-slate-800"
+          type="button"
+          @click="$emit('retry', message.id)"
+        >
+          <RefreshCw class="size-3.5" />
+          Retry
+        </button>
         <span v-if="message.updatedAt" class="text-xs text-slate-500">edited</span>
         <button
           class="hidden rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-white group-hover:inline-flex"

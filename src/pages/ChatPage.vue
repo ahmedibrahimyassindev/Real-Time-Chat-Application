@@ -18,12 +18,14 @@ const {
   currentUser,
   deleteActiveMessage,
   editMessage,
+  fetchOlderMessages,
   handleTyping,
   hasOlderMessages,
   isConnected,
   onlineMembersCount,
   reactToMessage,
   replyToMessage,
+  retryMessage,
   selectConversation,
   sendMessage,
   simulateConnectionLoss,
@@ -76,11 +78,12 @@ const {
           :users="users"
           :current-user-id="currentUser?.id ?? ''"
           :has-older-messages="hasOlderMessages"
-          @load-older="chatStore.loadOlderMessages"
+          @load-older="fetchOlderMessages"
           @edit="editMessage"
           @delete="deleteActiveMessage"
           @reply="chatStore.setReplyTarget"
           @react="reactToMessage"
+          @retry="retryMessage"
         />
 
         <div class="h-7 px-6 text-xs text-slate-500">

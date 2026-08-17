@@ -2,6 +2,11 @@ import { http } from './http'
 
 import type { Attachment, Message } from '@/types/message'
 
+export interface MessagePage {
+  items: Message[]
+  nextCursor: string | null
+}
+
 export interface CreateMessageInput {
   senderId: string
   body: string
@@ -9,8 +14,16 @@ export interface CreateMessageInput {
   attachments?: Attachment[]
 }
 
-export async function getMessages(conversationId: string) {
-  const response = await http.get<Message[]>(`/conversations/${conversationId}/messages`)
+export async function getMessages(
+  conversationId: string,
+  options: { cursor?: string | null; limit?: number } = {}
+) {
+  const response = await http.get<MessagePage>(`/conversations/${conversationId}/messages`, {
+    params: {
+      cursor: options.cursor,
+      limit: options.limit
+    }
+  })
   return response.data
 }
 

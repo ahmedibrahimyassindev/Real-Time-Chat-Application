@@ -1,13 +1,15 @@
 import { computed, type Ref } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/vue-query'
 
 import { getMessages, searchMessages } from '@/api/messages.api'
 import { queryKeys } from '@/queries/queryKeys'
 
 export function useMessagesQuery(conversationId: Ref<string>) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: computed(() => queryKeys.messages.conversation(conversationId.value)),
-    queryFn: () => getMessages(conversationId.value),
+    queryFn: ({ pageParam }) => getMessages(conversationId.value, { cursor: pageParam, limit: 4 }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: computed(() => Boolean(conversationId.value))
   })
 }

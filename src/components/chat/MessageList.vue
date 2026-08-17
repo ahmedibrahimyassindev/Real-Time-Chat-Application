@@ -18,6 +18,7 @@ defineEmits<{
   delete: [messageId: string]
   reply: [messageId: string]
   react: [messageId: string, emoji: string]
+  retry: [messageId: string]
 }>()
 
 function findSender(users: User[], senderId: string) {
@@ -52,6 +53,7 @@ function findMessage(messages: Message[], messageId?: string) {
         @delete="(messageId) => $emit('delete', messageId)"
         @reply="(messageId) => $emit('reply', messageId)"
         @react="(messageId, emoji) => $emit('react', messageId, emoji)"
+        @retry="(messageId) => $emit('retry', messageId)"
       />
     </div>
 

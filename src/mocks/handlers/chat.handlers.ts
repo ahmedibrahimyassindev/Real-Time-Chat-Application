@@ -109,12 +109,21 @@ export const chatHandlers = [
 
     return HttpResponse.json(mockDatabase.notifications)
   }),
-  http.get(`${apiBaseUrl}/conversations/:conversationId/messages`, ({ params }) => {
-    const conversationMessages = mockDatabase.messages.filter(
-      (message) => message.conversationId === params.conversationId
-    )
+  http.get(`${apiBaseUrl}/conversations/:conversationId/messages`, ({ params, request }) => {
+    const url = new URL(request.url)
+    const limit = Number(url.searchParams.get('limit') ?? 4)
+    const conversationMessages = mockDatabase.messages
+      .filter((message) => message.conversationId === params.conversationId)
+      .sort(
+        (first, second) =>
+          new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime()
+      )
+    const end = Number(url.searchParams.get('cursor') ?? conversationMessages.length)
+    const start = Math.max(end - limit, 0)
+    const items = conversationMessages.slice(start, end)
+    const nextCursor = start > 0 ? String(start) : null
 
-    return HttpResponse.json(conversationMessages)
+    return HttpResponse.json({ items, nextCursor })
   }),
   http.post(`${apiBaseUrl}/conversations/:conversationId/messages`, async ({ params, request }) => {
     const input = (await request.json()) as {
