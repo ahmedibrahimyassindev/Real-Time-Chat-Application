@@ -1,15 +1,26 @@
 <script setup lang="ts">
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Hash, Lock, Plus, Save, UserMinus, UserPlus } from '@lucide/vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
+import {
+  createChannel as createChannelRequest,
+  setChannelMembers,
+  updateChannel as updateChannelRequest
+} from '@/api/channels.api'
 import { useAuth } from '@/composables/useAuth'
 import ChatLayout from '@/layouts/ChatLayout.vue'
-import { mockUsers } from '@/mocks/data'
-import { useChatStore } from '@/stores/chat.store'
+import { queryKeys } from '@/queries/queryKeys'
+import { useChannelsQuery } from '@/queries/useChannelsQuery'
+import { useUsersQuery } from '@/queries/useUsersQuery'
 
-const chatStore = useChatStore()
+const queryClient = useQueryClient()
 const { currentUser } = useAuth()
-const selectedChannelId = ref(chatStore.channels[0]?.id ?? '')
+const channelsQuery = useChannelsQuery()
+const usersQuery = useUsersQuery()
+const channels = computed(() => channelsQuery.data.value ?? [])
+const users = computed(() => usersQuery.data.value ?? [])
+const selectedChannelId = ref('')
 const form = reactive({
   name: '',
   description: '',
@@ -17,33 +28,61 @@ const form = reactive({
 })
 
 const selectedChannel = computed(() =>
-  chatStore.channels.find((channel) => channel.id === selectedChannelId.value)
+  channels.value.find((channel) => channel.id === selectedChannelId.value)
 )
 const isCurrentUserMember = computed(() =>
   Boolean(currentUser.value && selectedChannel.value?.memberIds.includes(currentUser.value.id))
 )
 
-function selectChannel(channelId: string) {
-  const channel = chatStore.channels.find((item) => item.id === channelId)
-
-  if (!channel) {
+function fillFormFromSelectedChannel() {
+  if (!selectedChannel.value) {
     return
   }
 
-  selectedChannelId.value = channelId
-  form.name = channel.name
-  form.description = channel.description ?? ''
-  form.isPrivate = channel.isPrivate
+  form.name = selectedChannel.value.name
+  form.description = selectedChannel.value.description ?? ''
+  form.isPrivate = selectedChannel.value.isPrivate
 }
+
+function selectChannel(channelId: string) {
+  selectedChannelId.value = channelId
+  fillFormFromSelectedChannel()
+}
+
+function invalidateChannelData() {
+  queryClient.invalidateQueries({ queryKey: queryKeys.channels.all })
+  queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all })
+}
+
+const createChannelMutation = useMutation({
+  mutationFn: () =>
+    createChannelRequest({
+      ...form,
+      userId: currentUser.value?.id ?? ''
+    }),
+  onSuccess: (result) => {
+    invalidateChannelData()
+    selectedChannelId.value = result.channel.id
+    fillFormFromSelectedChannel()
+  }
+})
+
+const updateChannelMutation = useMutation({
+  mutationFn: () => updateChannelRequest(selectedChannelId.value, form),
+  onSuccess: invalidateChannelData
+})
+
+const updateMembersMutation = useMutation({
+  mutationFn: (memberIds: string[]) => setChannelMembers(selectedChannelId.value, memberIds),
+  onSuccess: invalidateChannelData
+})
 
 function createChannel() {
   if (!currentUser.value || !form.name.trim()) {
     return
   }
 
-  chatStore.createChannel(form, currentUser.value.id)
-  selectedChannelId.value =
-    chatStore.channels[chatStore.channels.length - 1]?.id ?? selectedChannelId.value
+  createChannelMutation.mutate()
 }
 
 function updateChannel() {
@@ -51,7 +90,7 @@ function updateChannel() {
     return
   }
 
-  chatStore.updateChannel(selectedChannel.value.id, form)
+  updateChannelMutation.mutate()
 }
 
 function toggleMembership() {
@@ -59,12 +98,11 @@ function toggleMembership() {
     return
   }
 
-  if (isCurrentUserMember.value) {
-    chatStore.leaveChannel(selectedChannel.value.id, currentUser.value.id)
-    return
-  }
+  const memberIds = isCurrentUserMember.value
+    ? selectedChannel.value.memberIds.filter((memberId) => memberId !== currentUser.value?.id)
+    : [...selectedChannel.value.memberIds, currentUser.value.id]
 
-  chatStore.joinChannel(selectedChannel.value.id, currentUser.value.id)
+  updateMembersMutation.mutate(memberIds)
 }
 
 function toggleMember(userId: string) {
@@ -76,8 +114,19 @@ function toggleMember(userId: string) {
     ? selectedChannel.value.memberIds.filter((memberId) => memberId !== userId)
     : [...selectedChannel.value.memberIds, userId]
 
-  chatStore.setChannelMembers(selectedChannel.value.id, memberIds)
+  updateMembersMutation.mutate(memberIds)
 }
+
+watch(
+  channels,
+  (items) => {
+    if (!selectedChannelId.value && items[0]) {
+      selectedChannelId.value = items[0].id
+      fillFormFromSelectedChannel()
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -90,7 +139,7 @@ function toggleMember(userId: string) {
 
         <div class="space-y-1">
           <button
-            v-for="channel in chatStore.channels"
+            v-for="channel in channels"
             :key="channel.id"
             class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
             :class="
@@ -179,7 +228,7 @@ function toggleMember(userId: string) {
               <h3 class="text-sm font-semibold text-white">Members</h3>
               <div class="mt-4 space-y-2">
                 <label
-                  v-for="user in mockUsers"
+                  v-for="user in users"
                   :key="user.id"
                   class="flex items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm"
                 >

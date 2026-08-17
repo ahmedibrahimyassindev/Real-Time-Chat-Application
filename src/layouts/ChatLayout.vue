@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { Bell, Hash, LogOut, Search, User } from '@lucide/vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
-import { useNotificationStore } from '@/stores/notification.store'
+import { useNotificationsQuery } from '@/queries/useNotificationsQuery'
 
 const router = useRouter()
 const { currentUser, clearSession } = useAuth()
-const notificationStore = useNotificationStore()
+const notificationsQuery = useNotificationsQuery()
+const unreadCount = computed(
+  () => notificationsQuery.data.value?.filter((notification) => !notification.isRead).length ?? 0
+)
 
 function logout() {
   clearSession()
@@ -27,10 +31,10 @@ function logout() {
         >
           <Bell class="size-4" />
           <span
-            v-if="notificationStore.unreadCount"
+            v-if="unreadCount"
             class="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-cyan-400 px-1 text-[10px] font-bold text-slate-950"
           >
-            {{ notificationStore.unreadCount }}
+            {{ unreadCount }}
           </span>
         </RouterLink>
         <RouterLink

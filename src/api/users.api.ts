@@ -6,3 +6,8 @@ export async function getCurrentUser() {
   const response = await http.get<User>('/me')
   return response.data
 }
+
+export async function getUsers() {
+  const response = await http.get<User[]>('/users')
+  return response.data
+}

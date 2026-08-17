@@ -1,288 +1,38 @@
 import { defineStore } from 'pinia'
 
-import { mockChannels, mockConversations, mockMessages } from '@/mocks/data'
-import type { MockWebSocketEvent } from '@/mocks/websocket/mockWebSocket'
-import type { Channel } from '@/types/channel'
-import type { Conversation } from '@/types/conversation'
-import type { Attachment, Message } from '@/types/message'
-
 const pageSize = 4
-
-function sortMessages(messages: Message[]) {
-  return [...messages].sort(
-    (first, second) => new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime()
-  )
-}
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    channels: [...mockChannels] as Channel[],
-    conversations: [...mockConversations] as Conversation[],
-    messages: [...mockMessages] as Message[],
-    activeConversationId: mockConversations[0]?.id ?? '',
+    activeConversationId: '',
     replyToMessageId: null as string | null,
     typingUserIdsByConversation: {} as Record<string, string[]>,
-    visibleMessageCounts: Object.fromEntries(
-      mockConversations.map((conversation) => [conversation.id, pageSize])
-    ) as Record<string, number>
+    visibleMessageCounts: {} as Record<string, number>
   }),
   getters: {
-    activeConversation: (state) =>
-      state.conversations.find((conversation) => conversation.id === state.activeConversationId) ??
-      null,
-    activeMessages: (state) => {
-      const conversationMessages = sortMessages(
-        state.messages.filter((message) => message.conversationId === state.activeConversationId)
-      )
-      const visibleCount = state.visibleMessageCounts[state.activeConversationId] ?? pageSize
-
-      return conversationMessages.slice(Math.max(conversationMessages.length - visibleCount, 0))
-    },
-    hasOlderMessages: (state) => {
-      const total = state.messages.filter(
-        (message) => message.conversationId === state.activeConversationId
-      ).length
-      const visibleCount = state.visibleMessageCounts[state.activeConversationId] ?? pageSize
-
-      return visibleCount < total
-    },
     activeTypingUserIds: (state) =>
       state.typingUserIdsByConversation[state.activeConversationId] ?? []
   },
   actions: {
-    handleRealtimeEvent(event: MockWebSocketEvent) {
-      if (event.type === 'message.created') {
-        this.receiveMessage(event.payload)
-        return
-      }
-
-      if (event.type === 'message.updated') {
-        this.editMessage(event.payload.id, event.payload.body)
-        return
-      }
-
-      if (event.type === 'message.deleted') {
-        this.deleteMessage(event.payload.id)
-        return
-      }
-
-      if (event.type === 'message.read') {
-        this.markMessageRead(event.payload.id)
-        return
-      }
-
-      if (event.type === 'typing.started') {
-        this.addTypingUser(event.payload.conversationId, event.payload.userId)
-        return
-      }
-
-      if (event.type === 'typing.stopped') {
-        this.removeTypingUser(event.payload.conversationId, event.payload.userId)
-      }
-    },
     selectConversation(conversationId: string) {
       this.activeConversationId = conversationId
-      const conversation = this.conversations.find((item) => item.id === conversationId)
-
-      if (conversation) {
-        conversation.unreadCount = 0
-      }
+      this.ensureConversation(conversationId)
     },
-    createChannel(
-      input: { name: string; description?: string; isPrivate: boolean },
-      userId: string
-    ) {
-      const normalizedName = input.name.trim().replace(/^#/, '').toLowerCase().replace(/\s+/g, '-')
-
-      if (!normalizedName || this.channels.some((channel) => channel.name === normalizedName)) {
-        return
-      }
-
-      const channel: Channel = {
-        id: crypto.randomUUID(),
-        name: normalizedName,
-        description: input.description?.trim(),
-        isPrivate: input.isPrivate,
-        memberIds: [userId]
-      }
-
-      const conversation: Conversation = {
-        id: `conversation-${channel.id}`,
-        type: 'channel',
-        title: `#${channel.name}`,
-        memberIds: channel.memberIds,
-        channelId: channel.id,
-        unreadCount: 0,
-        updatedAt: new Date().toISOString()
-      }
-
-      this.channels.push(channel)
-      this.conversations.push(conversation)
-      this.visibleMessageCounts[conversation.id] = pageSize
-      this.activeConversationId = conversation.id
-    },
-    updateChannel(
-      channelId: string,
-      input: { name: string; description?: string; isPrivate: boolean }
-    ) {
-      const channel = this.channels.find((item) => item.id === channelId)
-
-      if (!channel) {
-        return
-      }
-
-      channel.name = input.name.trim().replace(/^#/, '').toLowerCase().replace(/\s+/g, '-')
-      channel.description = input.description?.trim()
-      channel.isPrivate = input.isPrivate
-
-      const conversation = this.conversations.find((item) => item.channelId === channelId)
-
-      if (conversation) {
-        conversation.title = `#${channel.name}`
-      }
-    },
-    joinChannel(channelId: string, userId: string) {
-      const channel = this.channels.find((item) => item.id === channelId)
-
-      if (!channel || channel.memberIds.includes(userId)) {
-        return
-      }
-
-      channel.memberIds.push(userId)
-      const conversation = this.conversations.find((item) => item.channelId === channelId)
-
-      if (conversation) {
-        conversation.memberIds = channel.memberIds
-        return
-      }
-
-      const newConversationId = `conversation-${channel.id}`
-      this.conversations.push({
-        id: newConversationId,
-        type: 'channel',
-        title: `#${channel.name}`,
-        memberIds: channel.memberIds,
-        channelId: channel.id,
-        unreadCount: 0,
-        updatedAt: new Date().toISOString()
-      })
-      this.visibleMessageCounts[newConversationId] = pageSize
-    },
-    leaveChannel(channelId: string, userId: string) {
-      const channel = this.channels.find((item) => item.id === channelId)
-
-      if (!channel) {
-        return
-      }
-
-      channel.memberIds = channel.memberIds.filter((memberId) => memberId !== userId)
-      const conversation = this.conversations.find((item) => item.channelId === channelId)
-
-      if (conversation) {
-        conversation.memberIds = channel.memberIds
-      }
-    },
-    setChannelMembers(channelId: string, memberIds: string[]) {
-      const channel = this.channels.find((item) => item.id === channelId)
-
-      if (!channel) {
-        return
-      }
-
-      channel.memberIds = memberIds
-      const conversation = this.conversations.find((item) => item.channelId === channelId)
-
-      if (conversation) {
-        conversation.memberIds = memberIds
+    ensureConversation(conversationId: string) {
+      if (!this.visibleMessageCounts[conversationId]) {
+        this.visibleMessageCounts[conversationId] = pageSize
       }
     },
     loadOlderMessages() {
+      if (!this.activeConversationId) {
+        return
+      }
+
       const currentCount = this.visibleMessageCounts[this.activeConversationId] ?? pageSize
       this.visibleMessageCounts[this.activeConversationId] = currentCount + pageSize
     },
     setReplyTarget(messageId: string | null) {
       this.replyToMessageId = messageId
-    },
-    sendMessage(body: string, senderId: string, attachments: Attachment[] = []) {
-      const trimmedBody = body.trim()
-
-      if ((!trimmedBody && attachments.length === 0) || !this.activeConversationId) {
-        return
-      }
-
-      const now = new Date().toISOString()
-      const message: Message = {
-        id: crypto.randomUUID(),
-        conversationId: this.activeConversationId,
-        senderId,
-        body: trimmedBody,
-        replyToMessageId: this.replyToMessageId ?? undefined,
-        status: 'sent',
-        reactions: [],
-        attachments,
-        createdAt: now
-      }
-
-      this.messages.push(message)
-      this.replyToMessageId = null
-      window.setTimeout(() => {
-        this.markMessageDelivered(message.id)
-      }, 500)
-
-      this.visibleMessageCounts[this.activeConversationId] =
-        (this.visibleMessageCounts[this.activeConversationId] ?? pageSize) + 1
-
-      const conversation = this.conversations.find((item) => item.id === this.activeConversationId)
-
-      if (conversation) {
-        conversation.lastMessageId = message.id
-        conversation.updatedAt = now
-      }
-    },
-    editMessage(messageId: string, body: string) {
-      const message = this.messages.find((item) => item.id === messageId)
-
-      if (!message || !body.trim()) {
-        return
-      }
-
-      message.body = body.trim()
-      message.updatedAt = new Date().toISOString()
-    },
-    deleteMessage(messageId: string) {
-      this.messages = this.messages.filter((message) => message.id !== messageId)
-    },
-    receiveMessage(message: Message) {
-      if (this.messages.some((item) => item.id === message.id)) {
-        return
-      }
-
-      this.messages.push(message)
-      this.visibleMessageCounts[message.conversationId] =
-        (this.visibleMessageCounts[message.conversationId] ?? pageSize) + 1
-
-      const conversation = this.conversations.find((item) => item.id === message.conversationId)
-
-      if (conversation) {
-        conversation.lastMessageId = message.id
-        conversation.updatedAt = message.createdAt
-        conversation.unreadCount =
-          message.conversationId === this.activeConversationId ? 0 : conversation.unreadCount + 1
-      }
-    },
-    markMessageDelivered(messageId: string) {
-      const message = this.messages.find((item) => item.id === messageId)
-
-      if (message?.status === 'sent') {
-        message.status = 'delivered'
-      }
-    },
-    markMessageRead(messageId: string) {
-      const message = this.messages.find((item) => item.id === messageId)
-
-      if (message) {
-        message.status = 'read'
-      }
     },
     addTypingUser(conversationId: string, userId: string) {
       const typingUserIds = this.typingUserIdsByConversation[conversationId] ?? []
@@ -295,41 +45,6 @@ export const useChatStore = defineStore('chat', {
       const typingUserIds = this.typingUserIdsByConversation[conversationId] ?? []
       this.typingUserIdsByConversation[conversationId] = typingUserIds.filter(
         (typingUserId) => typingUserId !== userId
-      )
-    },
-    toggleReaction(messageId: string, emoji: string, userId: string) {
-      const message = this.messages.find((item) => item.id === messageId)
-
-      if (!message) {
-        return
-      }
-
-      const reaction = message.reactions.find((item) => item.emoji === emoji)
-
-      if (!reaction) {
-        message.reactions.push({ emoji, count: 1, userIds: [userId] })
-        return
-      }
-
-      if (reaction.userIds.includes(userId)) {
-        reaction.userIds = reaction.userIds.filter((item) => item !== userId)
-        reaction.count = reaction.userIds.length
-        message.reactions = message.reactions.filter((item) => item.count > 0)
-        return
-      }
-
-      reaction.userIds.push(userId)
-      reaction.count = reaction.userIds.length
-    },
-    searchMessages(query: string) {
-      const normalizedQuery = query.trim().toLowerCase()
-
-      if (!normalizedQuery) {
-        return []
-      }
-
-      return sortMessages(
-        this.messages.filter((message) => message.body.toLowerCase().includes(normalizedQuery))
       )
     }
   }

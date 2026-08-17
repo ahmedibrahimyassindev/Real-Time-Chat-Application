@@ -4,21 +4,26 @@ import { computed, ref } from 'vue'
 
 import { useAuth } from '@/composables/useAuth'
 import ChatLayout from '@/layouts/ChatLayout.vue'
-import { mockConversations, mockUsers } from '@/mocks/data'
-import { useChatStore } from '@/stores/chat.store'
+import { useConversationsQuery } from '@/queries/useConversationsQuery'
+import { useMessageSearchQuery } from '@/queries/useMessagesQuery'
+import { useUsersQuery } from '@/queries/useUsersQuery'
 import { formatMessageTime } from '@/utils/date'
 
-const chatStore = useChatStore()
 const { currentUser } = useAuth()
 const query = ref('')
-const results = computed(() => chatStore.searchMessages(query.value))
+const searchQuery = useMessageSearchQuery(query)
+const usersQuery = useUsersQuery()
+const conversationsQuery = useConversationsQuery()
+const results = computed(() => searchQuery.data.value ?? [])
+const users = computed(() => usersQuery.data.value ?? [])
+const conversations = computed(() => conversationsQuery.data.value ?? [])
 
 function senderName(senderId: string) {
-  return mockUsers.find((user) => user.id === senderId)?.name ?? 'Unknown user'
+  return users.value.find((user) => user.id === senderId)?.name ?? 'Unknown user'
 }
 
 function conversationTitle(conversationId: string) {
-  return mockConversations.find((conversation) => conversation.id === conversationId)?.title
+  return conversations.value.find((conversation) => conversation.id === conversationId)?.title
 }
 </script>
 

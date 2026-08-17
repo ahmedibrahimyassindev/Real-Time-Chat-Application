@@ -1,20 +1,19 @@
 import { defineStore } from 'pinia'
 
-import { mockUsers } from '@/mocks/data'
 import type { UserStatus } from '@/types/user'
 
 export const usePresenceStore = defineStore('presence', {
   state: () => ({
-    statuses: Object.fromEntries(mockUsers.map((user) => [user.id, user.status])) as Record<
-      string,
-      UserStatus
-    >
+    statuses: {} as Record<string, UserStatus>
   }),
   getters: {
     onlineCount: (state) =>
       Object.values(state.statuses).filter((status) => status === 'online').length
   },
   actions: {
+    setStatuses(statuses: Record<string, UserStatus>) {
+      this.statuses = { ...this.statuses, ...statuses }
+    },
     setStatus(userId: string, status: UserStatus) {
       this.statuses[userId] = status
     }

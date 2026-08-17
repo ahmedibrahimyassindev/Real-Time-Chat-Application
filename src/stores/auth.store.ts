@@ -2,14 +2,13 @@ import { defineStore } from 'pinia'
 
 import { getSessionUser, login, register } from '@/api/auth.api'
 import type { LoginInput, RegisterInput } from '@/schemas/auth.schema'
+import { authStorage } from '@/services/authStorage'
 import type { User } from '@/types/user'
-
-const authTokenStorageKey = 'realtime-chat.auth-token'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     currentUser: null as User | null,
-    token: localStorage.getItem(authTokenStorageKey),
+    token: authStorage.getToken(),
     isLoading: false,
     errorMessage: ''
   }),
@@ -21,13 +20,13 @@ export const useAuthStore = defineStore('auth', {
       this.currentUser = user
       this.token = token
       this.errorMessage = ''
-      localStorage.setItem(authTokenStorageKey, token)
+      authStorage.setToken(token)
     },
     clearSession() {
       this.currentUser = null
       this.token = null
       this.errorMessage = ''
-      localStorage.removeItem(authTokenStorageKey)
+      authStorage.removeToken()
     },
     async login(input: LoginInput) {
       this.isLoading = true

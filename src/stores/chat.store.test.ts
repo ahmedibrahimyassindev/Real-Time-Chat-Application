@@ -1,37 +1,35 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { useChatStore } from './chat.store'
 
 describe('chat store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    vi.stubGlobal('crypto', {
-      randomUUID: () => 'message-test-id'
-    })
   })
 
-  it('sends a message into the active conversation', () => {
+  it('tracks the active conversation and visible message count', () => {
     const chatStore = useChatStore()
 
-    chatStore.sendMessage('Hello team', 'user-ahmed')
+    chatStore.selectConversation('conversation-general')
+    chatStore.loadOlderMessages()
 
-    expect(chatStore.messages[chatStore.messages.length - 1]).toMatchObject({
-      id: 'message-test-id',
-      body: 'Hello team',
-      senderId: 'user-ahmed',
-      conversationId: chatStore.activeConversationId
-    })
+    expect(chatStore.activeConversationId).toBe('conversation-general')
+    expect(chatStore.visibleMessageCounts['conversation-general']).toBe(8)
   })
 
-  it('toggles reactions for a user', () => {
+  it('tracks typing users per conversation without duplicates', () => {
     const chatStore = useChatStore()
-    const message = chatStore.messages[0]
 
-    chatStore.toggleReaction(message.id, '👍', 'user-ahmed')
-    expect(message.reactions.find((reaction) => reaction.emoji === '👍')?.count).toBe(1)
+    chatStore.selectConversation('conversation-general')
+    chatStore.addTypingUser('conversation-general', 'user-sarah')
+    chatStore.addTypingUser('conversation-general', 'user-sarah')
+    chatStore.addTypingUser('conversation-general', 'user-mohamed')
 
-    chatStore.toggleReaction(message.id, '👍', 'user-ahmed')
-    expect(message.reactions.find((reaction) => reaction.emoji === '👍')).toBeUndefined()
+    expect(chatStore.activeTypingUserIds).toEqual(['user-sarah', 'user-mohamed'])
+
+    chatStore.removeTypingUser('conversation-general', 'user-sarah')
+
+    expect(chatStore.activeTypingUserIds).toEqual(['user-mohamed'])
   })
 })

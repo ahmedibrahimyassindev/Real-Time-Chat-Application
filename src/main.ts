@@ -7,7 +7,9 @@ import { router } from './router'
 import './styles.css'
 
 async function enableMocking() {
-  if (!import.meta.env.DEV) {
+  const shouldEnableMocks = import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCKS === 'true'
+
+  if (!shouldEnableMocks) {
     return
   }
 

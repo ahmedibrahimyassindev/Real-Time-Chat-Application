@@ -1,11 +1,31 @@
 <script setup lang="ts">
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Bell, CheckCheck } from '@lucide/vue'
+import { computed } from 'vue'
 
+import { markAllNotificationsRead, markNotificationRead } from '@/api/notifications.api'
 import ChatLayout from '@/layouts/ChatLayout.vue'
-import { useNotificationStore } from '@/stores/notification.store'
+import { queryKeys } from '@/queries/queryKeys'
+import { useNotificationsQuery } from '@/queries/useNotificationsQuery'
 import { formatMessageTime } from '@/utils/date'
 
-const notificationStore = useNotificationStore()
+const queryClient = useQueryClient()
+const notificationsQuery = useNotificationsQuery()
+const notifications = computed(() => notificationsQuery.data.value ?? [])
+
+const markReadMutation = useMutation({
+  mutationFn: markNotificationRead,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all })
+  }
+})
+
+const markAllReadMutation = useMutation({
+  mutationFn: markAllNotificationsRead,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all })
+  }
+})
 </script>
 
 <template>
@@ -21,7 +41,7 @@ const notificationStore = useNotificationStore()
           <button
             class="inline-flex items-center gap-2 rounded-md border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400 hover:text-cyan-300"
             type="button"
-            @click="notificationStore.markAllAsRead"
+            @click="markAllReadMutation.mutate()"
           >
             <CheckCheck class="size-4" />
             Mark all read
@@ -30,7 +50,7 @@ const notificationStore = useNotificationStore()
 
         <div class="mt-8 space-y-3">
           <article
-            v-for="notification in notificationStore.notifications"
+            v-for="notification in notifications"
             :key="notification.id"
             class="flex gap-4 rounded-lg border p-4"
             :class="
@@ -57,7 +77,7 @@ const notificationStore = useNotificationStore()
                 v-if="!notification.isRead"
                 class="mt-3 text-xs font-medium text-cyan-300 hover:text-cyan-200"
                 type="button"
-                @click="notificationStore.markAsRead(notification.id)"
+                @click="markReadMutation.mutate(notification.id)"
               >
                 Mark as read
               </button>
@@ -65,7 +85,7 @@ const notificationStore = useNotificationStore()
           </article>
 
           <p
-            v-if="notificationStore.notifications.length === 0"
+            v-if="notifications.length === 0"
             class="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-500"
           >
             No notifications.

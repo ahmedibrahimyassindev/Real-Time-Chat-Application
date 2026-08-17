@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { Wifi, WifiOff } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 
+import {
+  createMessage,
+  deleteMessage,
+  markMessageRead,
+  toggleMessageReaction,
+  updateMessage
+} from '@/api/messages.api'
 import ConversationList from '@/components/chat/ConversationList.vue'
 import MessageComposer from '@/components/chat/MessageComposer.vue'
 import MessageList from '@/components/chat/MessageList.vue'
@@ -9,30 +17,56 @@ import { useAuth } from '@/composables/useAuth'
 import { useTyping } from '@/composables/useTyping'
 import { useWebSocket } from '@/composables/useWebSocket'
 import ChatLayout from '@/layouts/ChatLayout.vue'
-import { mockWebSocketClient } from '@/mocks/websocket/mockWebSocket'
-import { mockUsers } from '@/mocks/data'
+import { startChatSimulation } from '@/mocks/scenarios/chatSimulation'
+import { queryKeys } from '@/queries/queryKeys'
+import { useConversationsQuery } from '@/queries/useConversationsQuery'
+import { useMessagesQuery } from '@/queries/useMessagesQuery'
+import { useUsersQuery } from '@/queries/useUsersQuery'
 import { useChatStore } from '@/stores/chat.store'
-import { useNotificationStore } from '@/stores/notification.store'
 import { usePresenceStore } from '@/stores/presence.store'
 import { useWebSocketStore } from '@/stores/websocket.store'
+import type { Conversation } from '@/types/conversation'
 import type { Attachment, Message } from '@/types/message'
+import type { Notification } from '@/types/notification'
+import type { UserStatus } from '@/types/user'
 
 const chatStore = useChatStore()
-const notificationStore = useNotificationStore()
 const presenceStore = usePresenceStore()
 const webSocketStore = useWebSocketStore()
+const queryClient = useQueryClient()
 const { currentUser } = useAuth()
-const { isConnected, latestEvent, connect, disconnect, simulateConnectionLoss } = useWebSocket()
+const { isConnected, latestEvent, connect, disconnect, unsubscribe, simulateConnectionLoss } =
+  useWebSocket()
 const { notifyTyping, stopTyping } = useTyping()
 
-const activeConversation = computed(() => chatStore.activeConversation)
-const replyToMessage = computed(() =>
-  chatStore.messages.find((message) => message.id === chatStore.replyToMessageId)
+const conversationsQuery = useConversationsQuery()
+const usersQuery = useUsersQuery()
+const conversations = computed(() => conversationsQuery.data.value ?? [])
+const users = computed(() => usersQuery.data.value ?? [])
+const activeConversationId = computed(() => chatStore.activeConversationId)
+const messagesQuery = useMessagesQuery(activeConversationId)
+const allMessages = computed(() => messagesQuery.data.value ?? [])
+const activeConversation = computed(
+  () =>
+    conversations.value.find((conversation) => conversation.id === activeConversationId.value) ??
+    null
 )
+const replyToMessage = computed(() =>
+  allMessages.value.find((message) => message.id === chatStore.replyToMessageId)
+)
+const visibleCount = computed(() => chatStore.visibleMessageCounts[activeConversationId.value] ?? 4)
+const activeMessages = computed(() =>
+  [...allMessages.value]
+    .sort(
+      (first, second) => new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime()
+    )
+    .slice(Math.max(allMessages.value.length - visibleCount.value, 0))
+)
+const hasOlderMessages = computed(() => visibleCount.value < allMessages.value.length)
 const activeTypingNames = computed(() =>
   chatStore.activeTypingUserIds
     .filter((userId) => userId !== currentUser.value?.id)
-    .map((userId) => mockUsers.find((user) => user.id === userId)?.name)
+    .map((userId) => users.value.find((user) => user.id === userId)?.name)
     .filter(Boolean)
 )
 const onlineMembersCount = computed(
@@ -42,72 +76,161 @@ const onlineMembersCount = computed(
     ).length ?? 0
 )
 
-let simulationTimer: number | undefined
+let stopSimulation: (() => void) | undefined
 
-function createIncomingMessage(conversationId: string): Message {
-  const senderId = conversationId === 'conversation-sarah' ? 'user-sarah' : 'user-mohamed'
+function updateConversationCache(updater: (conversations: Conversation[]) => Conversation[]) {
+  queryClient.setQueryData<Conversation[]>(queryKeys.conversations.all, (cached = []) =>
+    updater(cached)
+  )
+}
 
-  return {
-    id: crypto.randomUUID(),
-    conversationId,
-    senderId,
-    body:
-      conversationId === 'conversation-sarah'
-        ? 'I just reviewed the latest change.'
-        : 'Real-time mock event received for this conversation.',
-    status: 'delivered',
-    reactions: [],
-    attachments: [],
-    createdAt: new Date().toISOString()
+function updateMessageCache(conversationId: string, updater: (messages: Message[]) => Message[]) {
+  queryClient.setQueryData<Message[]>(
+    queryKeys.messages.conversation(conversationId),
+    (cached = []) => updater(cached)
+  )
+}
+
+function selectConversation(conversationId: string) {
+  chatStore.selectConversation(conversationId)
+  updateConversationCache((cached) =>
+    cached.map((conversation) =>
+      conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+    )
+  )
+}
+
+const sendMessageMutation = useMutation({
+  mutationFn: (input: { body: string; attachments: Attachment[] }) =>
+    createMessage(activeConversationId.value, {
+      senderId: currentUser.value?.id ?? '',
+      body: input.body,
+      replyToMessageId: chatStore.replyToMessageId ?? undefined,
+      attachments: input.attachments
+    }),
+  onMutate: async (input) => {
+    const conversationId = activeConversationId.value
+    await queryClient.cancelQueries({ queryKey: queryKeys.messages.conversation(conversationId) })
+
+    const previousMessages =
+      queryClient.getQueryData<Message[]>(queryKeys.messages.conversation(conversationId)) ?? []
+    const tempMessage: Message = {
+      id: `optimistic-${crypto.randomUUID()}`,
+      conversationId,
+      senderId: currentUser.value?.id ?? '',
+      body: input.body.trim(),
+      replyToMessageId: chatStore.replyToMessageId ?? undefined,
+      status: 'sent',
+      reactions: [],
+      attachments: input.attachments,
+      createdAt: new Date().toISOString()
+    }
+
+    updateMessageCache(conversationId, (cached) => [...cached, tempMessage])
+    chatStore.setReplyTarget(null)
+    chatStore.visibleMessageCounts[conversationId] = visibleCount.value + 1
+
+    return { conversationId, previousMessages, tempMessage }
+  },
+  onError: (_error, _input, context) => {
+    if (context) {
+      queryClient.setQueryData(
+        queryKeys.messages.conversation(context.conversationId),
+        context.previousMessages
+      )
+    }
+  },
+  onSuccess: (savedMessage, _input, context) => {
+    updateMessageCache(savedMessage.conversationId, (cached) =>
+      cached.map((message) => (message.id === context?.tempMessage.id ? savedMessage : message))
+    )
+  },
+  onSettled: (_data, _error, _input, context) => {
+    if (context) {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversation(context.conversationId)
+      })
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all })
   }
-}
+})
 
-function simulateIncomingActivity() {
-  const conversationId = chatStore.activeConversationId
-  const senderId = conversationId === 'conversation-sarah' ? 'user-sarah' : 'user-mohamed'
+const editMessageMutation = useMutation({
+  mutationFn: (input: { messageId: string; body: string }) =>
+    updateMessage(input.messageId, input.body),
+  onSuccess: (message) => {
+    updateMessageCache(message.conversationId, (cached) =>
+      cached.map((item) => (item.id === message.id ? message : item))
+    )
+  }
+})
 
-  mockWebSocketClient.emit({
-    type: 'typing.started',
-    payload: { conversationId, userId: senderId }
-  })
+const deleteMessageMutation = useMutation({
+  mutationFn: deleteMessage,
+  onMutate: (messageId) => {
+    updateMessageCache(activeConversationId.value, (cached) =>
+      cached.filter((message) => message.id !== messageId)
+    )
+  }
+})
 
-  window.setTimeout(() => {
-    mockWebSocketClient.emit({
-      type: 'typing.stopped',
-      payload: { conversationId, userId: senderId }
-    })
-    mockWebSocketClient.emit({
-      type: 'message.created',
-      payload: createIncomingMessage(conversationId)
-    })
-    mockWebSocketClient.emit({
-      type: 'notification.created',
-      payload: {
-        id: crypto.randomUUID(),
-        title: 'New message',
-        body: 'A simulated real-time message was received.',
-        isRead: false,
-        createdAt: new Date().toISOString()
-      }
-    })
-  }, 1600)
-}
+const reactMessageMutation = useMutation({
+  mutationFn: (input: { messageId: string; emoji: string; userId: string }) =>
+    toggleMessageReaction(input.messageId, input.emoji, input.userId),
+  onSuccess: (message) => {
+    updateMessageCache(message.conversationId, (cached) =>
+      cached.map((item) => (item.id === message.id ? message : item))
+    )
+  }
+})
+
+const readMessageMutation = useMutation({
+  mutationFn: markMessageRead,
+  onSuccess: (message) => {
+    updateMessageCache(message.conversationId, (cached) =>
+      cached.map((item) => (item.id === message.id ? message : item))
+    )
+  }
+})
 
 function sendMessage(body: string, attachments: Attachment[]) {
-  if (!currentUser.value) {
+  if (!currentUser.value || !activeConversationId.value) {
     return
   }
 
-  chatStore.sendMessage(body, currentUser.value.id, attachments)
+  sendMessageMutation.mutate({ body, attachments })
 }
 
 function handleTyping() {
-  if (!currentUser.value) {
+  if (!currentUser.value || !activeConversationId.value) {
     return
   }
 
-  notifyTyping(chatStore.activeConversationId, currentUser.value.id)
+  notifyTyping(activeConversationId.value, currentUser.value.id)
 }
+
+watch(
+  conversations,
+  (items) => {
+    if (!chatStore.activeConversationId && items[0]) {
+      selectConversation(items[0].id)
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  users,
+  (items) => {
+    const statuses = Object.fromEntries(items.map((user) => [user.id, user.status])) as Record<
+      string,
+      UserStatus
+    >
+
+    presenceStore.setStatuses(statuses)
+  },
+  { immediate: true }
+)
 
 watch(latestEvent, (event) => {
   if (!event) {
@@ -133,39 +256,91 @@ watch(latestEvent, (event) => {
   }
 
   if (event.type === 'notification.created') {
-    notificationStore.addNotification(event.payload)
+    queryClient.setQueryData<Notification[]>(queryKeys.notifications.all, (cached = []) => [
+      event.payload,
+      ...cached
+    ])
     return
   }
 
-  chatStore.handleRealtimeEvent(event)
+  if (event.type === 'typing.started') {
+    chatStore.addTypingUser(event.payload.conversationId, event.payload.userId)
+    return
+  }
 
-  if (
-    event.type === 'message.created' &&
-    event.payload.conversationId === chatStore.activeConversationId &&
-    event.payload.senderId !== currentUser.value?.id
-  ) {
-    window.setTimeout(() => {
-      mockWebSocketClient.emit({
-        type: 'message.read',
-        payload: {
-          id: event.payload.id,
-          conversationId: event.payload.conversationId,
-          userId: currentUser.value?.id ?? ''
-        }
-      })
-    }, 900)
+  if (event.type === 'typing.stopped') {
+    chatStore.removeTypingUser(event.payload.conversationId, event.payload.userId)
+    return
+  }
+
+  if (event.type === 'message.created') {
+    updateMessageCache(event.payload.conversationId, (cached) =>
+      cached.some((message) => message.id === event.payload.id)
+        ? cached
+        : [...cached, event.payload]
+    )
+    updateConversationCache((cached) =>
+      cached.map((conversation) =>
+        conversation.id === event.payload.conversationId
+          ? {
+              ...conversation,
+              lastMessageId: event.payload.id,
+              unreadCount:
+                event.payload.conversationId === activeConversationId.value
+                  ? 0
+                  : conversation.unreadCount + 1,
+              updatedAt: event.payload.createdAt
+            }
+          : conversation
+      )
+    )
+
+    if (
+      event.payload.conversationId === activeConversationId.value &&
+      event.payload.senderId !== currentUser.value?.id
+    ) {
+      window.setTimeout(() => {
+        readMessageMutation.mutate(event.payload.id)
+      }, 900)
+    }
+    return
+  }
+
+  if (event.type === 'message.updated') {
+    updateMessageCache(event.payload.conversationId, (cached) =>
+      cached.map((message) => (message.id === event.payload.id ? event.payload : message))
+    )
+    return
+  }
+
+  if (event.type === 'message.deleted') {
+    updateMessageCache(event.payload.conversationId, (cached) =>
+      cached.filter((message) => message.id !== event.payload.id)
+    )
+    return
+  }
+
+  if (event.type === 'message.read') {
+    updateMessageCache(event.payload.conversationId, (cached) =>
+      cached.map((message) =>
+        message.id === event.payload.id ? { ...message, status: 'read' } : message
+      )
+    )
   }
 })
 
 onMounted(() => {
   connect()
-  simulationTimer = window.setInterval(simulateIncomingActivity, 14000)
+  stopSimulation = startChatSimulation({
+    getConversationId: () => activeConversationId.value
+  })
 })
 
 onUnmounted(() => {
-  window.clearInterval(simulationTimer)
+  stopSimulation?.()
   stopTyping()
   disconnect()
+  unsubscribe()
 })
 </script>
 
@@ -181,9 +356,9 @@ onUnmounted(() => {
           <h2 class="text-sm font-semibold text-slate-200">Conversations</h2>
         </div>
         <ConversationList
-          :conversations="chatStore.conversations"
-          :active-conversation-id="chatStore.activeConversationId"
-          @select="chatStore.selectConversation"
+          :conversations="conversations"
+          :active-conversation-id="activeConversationId"
+          @select="selectConversation"
         />
       </aside>
 
@@ -209,18 +384,19 @@ onUnmounted(() => {
         </header>
 
         <MessageList
-          :messages="chatStore.activeMessages"
-          :all-messages="chatStore.messages"
-          :users="mockUsers"
+          :messages="activeMessages"
+          :all-messages="allMessages"
+          :users="users"
           :current-user-id="currentUser?.id ?? ''"
-          :has-older-messages="chatStore.hasOlderMessages"
+          :has-older-messages="hasOlderMessages"
           @load-older="chatStore.loadOlderMessages"
-          @edit="chatStore.editMessage"
-          @delete="chatStore.deleteMessage"
+          @edit="(messageId, body) => editMessageMutation.mutate({ messageId, body })"
+          @delete="(messageId) => deleteMessageMutation.mutate(messageId)"
           @reply="chatStore.setReplyTarget"
           @react="
             (messageId, emoji) =>
-              currentUser && chatStore.toggleReaction(messageId, emoji, currentUser.id)
+              currentUser &&
+              reactMessageMutation.mutate({ messageId, emoji, userId: currentUser.id })
           "
         />
 
