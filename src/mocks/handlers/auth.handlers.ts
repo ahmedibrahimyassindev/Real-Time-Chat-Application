@@ -17,6 +17,19 @@ export const authHandlers = [
       token: 'mock-access-token'
     })
   }),
+  http.post(`${apiBaseUrl}/auth/register`, async ({ request }) => {
+    const input = (await request.json()) as { name?: string; email?: string }
+
+    return HttpResponse.json({
+      user: {
+        id: 'user-new',
+        name: input.name ?? 'New User',
+        email: input.email ?? 'new-user@example.com',
+        status: 'online'
+      },
+      token: 'mock-access-token'
+    })
+  }),
   http.get(`${apiBaseUrl}/me`, () => {
     const user = mockUsers.find((mockUser) => mockUser.id === currentUserId)
 

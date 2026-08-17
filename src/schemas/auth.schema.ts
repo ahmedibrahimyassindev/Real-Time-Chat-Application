@@ -6,3 +6,15 @@ export const loginSchema = z.object({
 })
 
 export type LoginInput = z.infer<typeof loginSchema>
+
+export const registerSchema = loginSchema
+  .extend({
+    name: z.string().min(2),
+    confirmPassword: z.string().min(8)
+  })
+  .refine((input) => input.password === input.confirmPassword, {
+    message: 'Passwords must match',
+    path: ['confirmPassword']
+  })
+
+export type RegisterInput = z.infer<typeof registerSchema>
