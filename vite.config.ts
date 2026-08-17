@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === 'true' ? '/Real-Time-Chat-Application/' : '/',
   plugins: [vue()],
   resolve: {
     alias: {

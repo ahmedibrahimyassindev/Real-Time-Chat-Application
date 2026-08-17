@@ -1021,6 +1021,13 @@ docker build --target development -t realtime-chat-frontend-dev .
 
 See [Docker documentation](docs/docker.md).
 
+### CI/CD
+
+GitHub Actions runs quality checks, Docker image publishing, and GitHub
+Pages deployment.
+
+See [CI/CD documentation](docs/ci-cd.md).
+
 ---
 
 ## Future Improvements
