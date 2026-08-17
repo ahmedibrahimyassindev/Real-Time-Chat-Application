@@ -146,15 +146,19 @@ export function useChatMessages(options: UseChatMessagesOptions) {
   const reactMessageMutation = useMutation({
     mutationFn: (input: { messageId: string; emoji: string; userId: string }) =>
       toggleMessageReaction(input.messageId, input.emoji, input.userId),
-    onSuccess: (message) => {
-      replaceMessageInCache(options.queryClient, message.conversationId, message)
+    onSettled: () => {
+      options.queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversation(options.activeConversationId.value)
+      })
     }
   })
 
   const readMessageMutation = useMutation({
     mutationFn: markMessageRead,
-    onSuccess: (message) => {
-      replaceMessageInCache(options.queryClient, message.conversationId, message)
+    onSettled: () => {
+      options.queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversation(options.activeConversationId.value)
+      })
     }
   })
 

@@ -1,8 +1,7 @@
 import { http } from './http'
-
-import type { Conversation } from '@/types/conversation'
+import { mapConversation, type BackendConversation } from './backendAdapters'
 
 export async function getConversations() {
-  const response = await http.get<Conversation[]>('/conversations')
-  return response.data
+  const response = await http.get<BackendConversation[]>('/conversations')
+  return response.data.map(mapConversation)
 }

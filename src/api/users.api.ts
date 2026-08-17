@@ -1,13 +1,12 @@
 import { http } from './http'
-
-import type { User } from '@/types/user'
+import { mapUser, type BackendUser } from './backendAdapters'
 
 export async function getCurrentUser() {
-  const response = await http.get<User>('/me')
-  return response.data
+  const response = await http.get<BackendUser>('/users/me')
+  return mapUser(response.data)
 }
 
 export async function getUsers() {
-  const response = await http.get<User[]>('/users')
-  return response.data
+  const response = await http.get<BackendUser[]>('/users')
+  return response.data.map(mapUser)
 }

@@ -13,7 +13,7 @@ const { login, isLoading, errorMessage } = useAuth()
 const validationMessage = ref('')
 const form = reactive({
   email: 'ahmed@example.com',
-  password: 'password123'
+  password: 'Password123!'
 })
 
 async function submitLogin() {

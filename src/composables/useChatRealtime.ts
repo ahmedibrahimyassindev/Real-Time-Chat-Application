@@ -17,6 +17,8 @@ import { useWebSocketStore } from '@/stores/websocket.store'
 import type { Notification } from '@/types/notification'
 import type { User } from '@/types/user'
 
+const shouldUseMocks = import.meta.env.VITE_ENABLE_MOCKS === 'true'
+
 interface UseChatRealtimeOptions {
   activeConversationId: Ref<string>
   currentUser: Ref<User | null>
@@ -124,14 +126,26 @@ export function useChatRealtime(options: UseChatRealtimeOptions) {
         event.payload.id,
         (message) => ({ ...message, status: 'read' })
       )
+      return
+    }
+
+    if (event.type === 'reaction.created') {
+      const payload = event.payload as unknown as { conversationId: string }
+
+      options.queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversation(payload.conversationId)
+      })
     }
   })
 
   onMounted(() => {
     connect()
-    stopSimulation = startChatSimulation({
-      getConversationId: () => options.activeConversationId.value
-    })
+
+    if (shouldUseMocks) {
+      stopSimulation = startChatSimulation({
+        getConversationId: () => options.activeConversationId.value
+      })
+    }
   })
 
   onUnmounted(() => {
