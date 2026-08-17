@@ -9,7 +9,7 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 7 channels implemented
+> **Current Status:** Phase 8 notifications implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
@@ -22,7 +22,9 @@ component-driven development.
 > read-receipt updates. Advanced messaging now includes reactions, replies,
 > attachment selection, message search, and mention rendering. Channel
 > management now supports channel listing, creation, editing, join/leave,
-> member management, and permission-aware controls.
+> member management, and permission-aware controls. Notifications now include
+> a notification center, unread badge, mark-as-read actions, and simulated
+> real-time delivery.
 
 ---
 
@@ -933,11 +935,11 @@ Logout
 
 ### Phase 8 - Notifications
 
-- [ ] Notification center
-- [ ] Unread counter
-- [ ] Mark as read
-- [ ] Mark all as read
-- [ ] Simulated real-time notifications
+- [x] Notification center
+- [x] Unread counter
+- [x] Mark as read
+- [x] Mark all as read
+- [x] Simulated real-time notifications
 
 ### Phase 9 - Quality
 
@@ -967,8 +969,9 @@ Current implementation status:
 - Phase 5 real-time UI is implemented.
 - Phase 6 advanced messaging is implemented.
 - Phase 7 channels are implemented.
+- Phase 8 notifications are implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Notifications have not yet been implemented.
+- Quality tooling beyond lint/build has not yet been implemented.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application

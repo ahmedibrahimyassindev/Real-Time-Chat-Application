@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ChatPage from '@/pages/ChatPage.vue'
 import ChannelPage from '@/pages/ChannelPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
+import NotificationsPage from '@/pages/NotificationsPage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
 import SearchPage from '@/pages/SearchPage.vue'
@@ -49,6 +50,12 @@ export const router = createRouter({
       path: '/channels',
       name: 'channels',
       component: ChannelPage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: NotificationsPage,
       meta: { requiresAuth: true }
     }
   ]

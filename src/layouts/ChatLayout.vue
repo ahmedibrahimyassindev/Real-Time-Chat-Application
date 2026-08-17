@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Hash, LogOut, Search, User } from '@lucide/vue'
+import { Bell, Hash, LogOut, Search, User } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
+import { useNotificationStore } from '@/stores/notification.store'
 
 const router = useRouter()
 const { currentUser, clearSession } = useAuth()
+const notificationStore = useNotificationStore()
 
 function logout() {
   clearSession()
@@ -18,6 +20,19 @@ function logout() {
     <header class="flex items-center justify-between border-b border-slate-800 px-6">
       <span class="text-sm font-semibold text-white">Real-Time Chat</span>
       <div class="flex items-center gap-2">
+        <RouterLink
+          to="/notifications"
+          class="relative inline-flex size-9 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white"
+          aria-label="Notifications"
+        >
+          <Bell class="size-4" />
+          <span
+            v-if="notificationStore.unreadCount"
+            class="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-cyan-400 px-1 text-[10px] font-bold text-slate-950"
+          >
+            {{ notificationStore.unreadCount }}
+          </span>
+        </RouterLink>
         <RouterLink
           to="/channels"
           class="inline-flex size-9 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white"

@@ -12,11 +12,13 @@ import ChatLayout from '@/layouts/ChatLayout.vue'
 import { mockWebSocketClient } from '@/mocks/websocket/mockWebSocket'
 import { mockUsers } from '@/mocks/data'
 import { useChatStore } from '@/stores/chat.store'
+import { useNotificationStore } from '@/stores/notification.store'
 import { usePresenceStore } from '@/stores/presence.store'
 import { useWebSocketStore } from '@/stores/websocket.store'
 import type { Attachment, Message } from '@/types/message'
 
 const chatStore = useChatStore()
+const notificationStore = useNotificationStore()
 const presenceStore = usePresenceStore()
 const webSocketStore = useWebSocketStore()
 const { currentUser } = useAuth()
@@ -78,6 +80,16 @@ function simulateIncomingActivity() {
       type: 'message.created',
       payload: createIncomingMessage(conversationId)
     })
+    mockWebSocketClient.emit({
+      type: 'notification.created',
+      payload: {
+        id: crypto.randomUUID(),
+        title: 'New message',
+        body: 'A simulated real-time message was received.',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      }
+    })
   }, 1600)
 }
 
@@ -117,6 +129,11 @@ watch(latestEvent, (event) => {
 
   if (event.type === 'presence.changed') {
     presenceStore.setStatus(event.payload.userId, event.payload.status)
+    return
+  }
+
+  if (event.type === 'notification.created') {
+    notificationStore.addNotification(event.payload)
     return
   }
 
