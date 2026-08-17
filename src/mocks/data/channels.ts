@@ -21,5 +21,12 @@ export const mockChannels: Channel[] = [
     description: 'Private coordination for release readiness.',
     isPrivate: true,
     memberIds: ['user-ahmed', 'user-mohamed']
+  },
+  {
+    id: 'channel-design',
+    name: 'design',
+    description: 'Design review and product feedback.',
+    isPrivate: false,
+    memberIds: ['user-sarah', 'user-nour']
   }
 ]

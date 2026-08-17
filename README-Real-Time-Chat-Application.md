@@ -9,7 +9,7 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 6 advanced messaging implemented
+> **Current Status:** Phase 7 channels implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
@@ -20,7 +20,9 @@ component-driven development.
 > older messages. Simulated real-time events now drive incoming messages,
 > typing indicators, presence, connection state, reconnection behavior, and
 > read-receipt updates. Advanced messaging now includes reactions, replies,
-> attachment selection, message search, and mention rendering.
+> attachment selection, message search, and mention rendering. Channel
+> management now supports channel listing, creation, editing, join/leave,
+> member management, and permission-aware controls.
 
 ---
 
@@ -921,13 +923,13 @@ Logout
 
 ### Phase 7 - Channels
 
-- [ ] Channel list
-- [ ] Create channel
-- [ ] Edit channel
-- [ ] Join channel
-- [ ] Leave channel
-- [ ] Member management UI
-- [ ] Permission-aware controls
+- [x] Channel list
+- [x] Create channel
+- [x] Edit channel
+- [x] Join channel
+- [x] Leave channel
+- [x] Member management UI
+- [x] Permission-aware controls
 
 ### Phase 8 - Notifications
 
@@ -964,8 +966,9 @@ Current implementation status:
 - Phase 4 core chat UI is implemented.
 - Phase 5 real-time UI is implemented.
 - Phase 6 advanced messaging is implemented.
+- Phase 7 channels are implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Channel management and notifications have not yet been implemented.
+- Notifications have not yet been implemented.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import ChatPage from '@/pages/ChatPage.vue'
+import ChannelPage from '@/pages/ChannelPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import ProfilePage from '@/pages/ProfilePage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
@@ -42,6 +43,12 @@ export const router = createRouter({
       path: '/search',
       name: 'search',
       component: SearchPage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/channels',
+      name: 'channels',
+      component: ChannelPage,
       meta: { requiresAuth: true }
     }
   ]

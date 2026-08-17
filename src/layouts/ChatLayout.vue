@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, Search, User } from '@lucide/vue'
+import { Hash, LogOut, Search, User } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 
 import { useAuth } from '@/composables/useAuth'
@@ -18,6 +18,13 @@ function logout() {
     <header class="flex items-center justify-between border-b border-slate-800 px-6">
       <span class="text-sm font-semibold text-white">Real-Time Chat</span>
       <div class="flex items-center gap-2">
+        <RouterLink
+          to="/channels"
+          class="inline-flex size-9 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white"
+          aria-label="Channels"
+        >
+          <Hash class="size-4" />
+        </RouterLink>
         <RouterLink
           to="/search"
           class="inline-flex size-9 items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white"

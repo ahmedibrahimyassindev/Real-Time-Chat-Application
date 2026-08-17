@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 
-import { mockConversations, mockMessages } from '@/mocks/data'
+import { mockChannels, mockConversations, mockMessages } from '@/mocks/data'
 import type { MockWebSocketEvent } from '@/mocks/websocket/mockWebSocket'
+import type { Channel } from '@/types/channel'
 import type { Conversation } from '@/types/conversation'
 import type { Attachment, Message } from '@/types/message'
 
@@ -15,6 +16,7 @@ function sortMessages(messages: Message[]) {
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
+    channels: [...mockChannels] as Channel[],
     conversations: [...mockConversations] as Conversation[],
     messages: [...mockMessages] as Message[],
     activeConversationId: mockConversations[0]?.id ?? '',
@@ -84,6 +86,114 @@ export const useChatStore = defineStore('chat', {
 
       if (conversation) {
         conversation.unreadCount = 0
+      }
+    },
+    createChannel(
+      input: { name: string; description?: string; isPrivate: boolean },
+      userId: string
+    ) {
+      const normalizedName = input.name.trim().replace(/^#/, '').toLowerCase().replace(/\s+/g, '-')
+
+      if (!normalizedName || this.channels.some((channel) => channel.name === normalizedName)) {
+        return
+      }
+
+      const channel: Channel = {
+        id: crypto.randomUUID(),
+        name: normalizedName,
+        description: input.description?.trim(),
+        isPrivate: input.isPrivate,
+        memberIds: [userId]
+      }
+
+      const conversation: Conversation = {
+        id: `conversation-${channel.id}`,
+        type: 'channel',
+        title: `#${channel.name}`,
+        memberIds: channel.memberIds,
+        channelId: channel.id,
+        unreadCount: 0,
+        updatedAt: new Date().toISOString()
+      }
+
+      this.channels.push(channel)
+      this.conversations.push(conversation)
+      this.visibleMessageCounts[conversation.id] = pageSize
+      this.activeConversationId = conversation.id
+    },
+    updateChannel(
+      channelId: string,
+      input: { name: string; description?: string; isPrivate: boolean }
+    ) {
+      const channel = this.channels.find((item) => item.id === channelId)
+
+      if (!channel) {
+        return
+      }
+
+      channel.name = input.name.trim().replace(/^#/, '').toLowerCase().replace(/\s+/g, '-')
+      channel.description = input.description?.trim()
+      channel.isPrivate = input.isPrivate
+
+      const conversation = this.conversations.find((item) => item.channelId === channelId)
+
+      if (conversation) {
+        conversation.title = `#${channel.name}`
+      }
+    },
+    joinChannel(channelId: string, userId: string) {
+      const channel = this.channels.find((item) => item.id === channelId)
+
+      if (!channel || channel.memberIds.includes(userId)) {
+        return
+      }
+
+      channel.memberIds.push(userId)
+      const conversation = this.conversations.find((item) => item.channelId === channelId)
+
+      if (conversation) {
+        conversation.memberIds = channel.memberIds
+        return
+      }
+
+      const newConversationId = `conversation-${channel.id}`
+      this.conversations.push({
+        id: newConversationId,
+        type: 'channel',
+        title: `#${channel.name}`,
+        memberIds: channel.memberIds,
+        channelId: channel.id,
+        unreadCount: 0,
+        updatedAt: new Date().toISOString()
+      })
+      this.visibleMessageCounts[newConversationId] = pageSize
+    },
+    leaveChannel(channelId: string, userId: string) {
+      const channel = this.channels.find((item) => item.id === channelId)
+
+      if (!channel) {
+        return
+      }
+
+      channel.memberIds = channel.memberIds.filter((memberId) => memberId !== userId)
+      const conversation = this.conversations.find((item) => item.channelId === channelId)
+
+      if (conversation) {
+        conversation.memberIds = channel.memberIds
+      }
+    },
+    setChannelMembers(channelId: string, memberIds: string[]) {
+      const channel = this.channels.find((item) => item.id === channelId)
+
+      if (!channel) {
+        return
+      }
+
+      channel.memberIds = memberIds
+      const conversation = this.conversations.find((item) => item.channelId === channelId)
+
+      if (conversation) {
+        conversation.memberIds = memberIds
       }
     },
     loadOlderMessages() {
