@@ -21,6 +21,7 @@ type MockWebSocketListener = (event: MockWebSocketEvent) => void
 export class MockWebSocketClient {
   private listeners = new Set<MockWebSocketListener>()
   private connectionTimer: number | undefined
+  private reconnectTimer: number | undefined
 
   isConnected = false
 
@@ -34,8 +35,22 @@ export class MockWebSocketClient {
 
   disconnect() {
     window.clearTimeout(this.connectionTimer)
+    window.clearTimeout(this.reconnectTimer)
     this.isConnected = false
     this.emit({ type: 'user.offline', payload: { userId: 'user-ahmed' } })
+  }
+
+  simulateConnectionLoss() {
+    if (!this.isConnected) {
+      return
+    }
+
+    this.isConnected = false
+    this.emit({ type: 'user.offline', payload: { userId: 'user-ahmed' } })
+
+    this.reconnectTimer = window.setTimeout(() => {
+      this.connect()
+    }, 1200)
   }
 
   subscribe(listener: MockWebSocketListener) {

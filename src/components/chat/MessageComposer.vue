@@ -4,6 +4,7 @@ import { ref } from 'vue'
 
 const emit = defineEmits<{
   send: [body: string]
+  typing: []
 }>()
 
 const body = ref('')
@@ -28,6 +29,7 @@ function submitMessage() {
         class="max-h-36 min-h-11 flex-1 resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         placeholder="Message"
         rows="1"
+        @input="$emit('typing')"
         @keydown.enter.exact.prevent="submitMessage"
       />
       <button

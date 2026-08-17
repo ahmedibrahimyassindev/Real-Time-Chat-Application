@@ -10,6 +10,16 @@ export default [
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
+    languageOptions: {
+      globals: {
+        crypto: 'readonly',
+        localStorage: 'readonly',
+        URL: 'readonly',
+        window: 'readonly'
+      }
+    }
+  },
+  {
     files: ['**/*.vue'],
     languageOptions: {
       parserOptions: {

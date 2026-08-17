@@ -20,10 +20,16 @@ export function useWebSocket() {
     unsubscribe()
   }
 
+  function simulateConnectionLoss() {
+    isConnected.value = false
+    mockWebSocketClient.simulateConnectionLoss()
+  }
+
   return {
     isConnected,
     latestEvent,
     connect,
-    disconnect
+    disconnect,
+    simulateConnectionLoss
   }
 }

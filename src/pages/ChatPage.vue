@@ -1,18 +1,82 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { Wifi, WifiOff } from '@lucide/vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 
 import ConversationList from '@/components/chat/ConversationList.vue'
 import MessageComposer from '@/components/chat/MessageComposer.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useTyping } from '@/composables/useTyping'
+import { useWebSocket } from '@/composables/useWebSocket'
 import ChatLayout from '@/layouts/ChatLayout.vue'
+import { mockWebSocketClient } from '@/mocks/websocket/mockWebSocket'
 import { mockUsers } from '@/mocks/data'
 import { useChatStore } from '@/stores/chat.store'
+import { usePresenceStore } from '@/stores/presence.store'
+import { useWebSocketStore } from '@/stores/websocket.store'
+import type { Message } from '@/types/message'
 
 const chatStore = useChatStore()
+const presenceStore = usePresenceStore()
+const webSocketStore = useWebSocketStore()
 const { currentUser } = useAuth()
+const { isConnected, latestEvent, connect, disconnect, simulateConnectionLoss } = useWebSocket()
+const { notifyTyping, stopTyping } = useTyping()
 
 const activeConversation = computed(() => chatStore.activeConversation)
+const activeTypingNames = computed(() =>
+  chatStore.activeTypingUserIds
+    .filter((userId) => userId !== currentUser.value?.id)
+    .map((userId) => mockUsers.find((user) => user.id === userId)?.name)
+    .filter(Boolean)
+)
+const onlineMembersCount = computed(
+  () =>
+    activeConversation.value?.memberIds.filter(
+      (memberId) => presenceStore.statuses[memberId] === 'online'
+    ).length ?? 0
+)
+
+let simulationTimer: number | undefined
+
+function createIncomingMessage(conversationId: string): Message {
+  const senderId = conversationId === 'conversation-sarah' ? 'user-sarah' : 'user-mohamed'
+
+  return {
+    id: crypto.randomUUID(),
+    conversationId,
+    senderId,
+    body:
+      conversationId === 'conversation-sarah'
+        ? 'I just reviewed the latest change.'
+        : 'Real-time mock event received for this conversation.',
+    status: 'delivered',
+    reactions: [],
+    attachments: [],
+    createdAt: new Date().toISOString()
+  }
+}
+
+function simulateIncomingActivity() {
+  const conversationId = chatStore.activeConversationId
+  const senderId = conversationId === 'conversation-sarah' ? 'user-sarah' : 'user-mohamed'
+
+  mockWebSocketClient.emit({
+    type: 'typing.started',
+    payload: { conversationId, userId: senderId }
+  })
+
+  window.setTimeout(() => {
+    mockWebSocketClient.emit({
+      type: 'typing.stopped',
+      payload: { conversationId, userId: senderId }
+    })
+    mockWebSocketClient.emit({
+      type: 'message.created',
+      payload: createIncomingMessage(conversationId)
+    })
+  }, 1600)
+}
 
 function sendMessage(body: string) {
   if (!currentUser.value) {
@@ -21,6 +85,68 @@ function sendMessage(body: string) {
 
   chatStore.sendMessage(body, currentUser.value.id)
 }
+
+function handleTyping() {
+  if (!currentUser.value) {
+    return
+  }
+
+  notifyTyping(chatStore.activeConversationId, currentUser.value.id)
+}
+
+watch(latestEvent, (event) => {
+  if (!event) {
+    return
+  }
+
+  webSocketStore.setConnected(isConnected.value)
+
+  if (event.type === 'user.online') {
+    presenceStore.setStatus(event.payload.userId, 'online')
+    return
+  }
+
+  if (event.type === 'user.offline') {
+    webSocketStore.recordReconnectAttempt()
+    presenceStore.setStatus(event.payload.userId, 'offline')
+    return
+  }
+
+  if (event.type === 'presence.changed') {
+    presenceStore.setStatus(event.payload.userId, event.payload.status)
+    return
+  }
+
+  chatStore.handleRealtimeEvent(event)
+
+  if (
+    event.type === 'message.created' &&
+    event.payload.conversationId === chatStore.activeConversationId &&
+    event.payload.senderId !== currentUser.value?.id
+  ) {
+    window.setTimeout(() => {
+      mockWebSocketClient.emit({
+        type: 'message.read',
+        payload: {
+          id: event.payload.id,
+          conversationId: event.payload.conversationId,
+          userId: currentUser.value?.id ?? ''
+        }
+      })
+    }, 900)
+  }
+})
+
+onMounted(() => {
+  connect()
+  simulationTimer = window.setInterval(simulateIncomingActivity, 14000)
+})
+
+onUnmounted(() => {
+  window.clearInterval(simulationTimer)
+  stopTyping()
+  disconnect()
+})
 </script>
 
 <template>
@@ -37,14 +163,25 @@ function sendMessage(body: string) {
         />
       </aside>
 
-      <div class="grid min-h-0 grid-rows-[64px_1fr_auto]">
-        <header class="flex items-center border-b border-slate-800 px-6">
+      <div class="grid min-h-0 grid-rows-[64px_1fr_28px_auto]">
+        <header class="flex items-center justify-between border-b border-slate-800 px-6">
           <div>
             <h1 class="text-base font-semibold text-white">{{ activeConversation?.title }}</h1>
             <p class="mt-1 text-xs text-slate-500">
-              {{ activeConversation?.memberIds.length ?? 0 }} members
+              {{ onlineMembersCount }} online of {{ activeConversation?.memberIds.length ?? 0 }}
+              members
             </p>
           </div>
+
+          <button
+            class="inline-flex items-center gap-2 rounded-md border border-slate-800 px-3 py-2 text-xs font-medium text-slate-300 hover:border-cyan-400 hover:text-cyan-300"
+            type="button"
+            @click="simulateConnectionLoss"
+          >
+            <Wifi v-if="isConnected" class="size-4 text-emerald-300" />
+            <WifiOff v-else class="size-4 text-red-300" />
+            <span>{{ isConnected ? 'Connected' : 'Reconnecting' }}</span>
+          </button>
         </header>
 
         <MessageList
@@ -57,7 +194,15 @@ function sendMessage(body: string) {
           @delete="chatStore.deleteMessage"
         />
 
-        <MessageComposer @send="sendMessage" />
+        <div class="h-7 px-6 text-xs text-slate-500">
+          <span v-if="activeTypingNames.length">
+            {{ activeTypingNames.join(' and ') }}
+            {{ activeTypingNames.length === 1 ? 'is' : 'are' }}
+            typing...
+          </span>
+        </div>
+
+        <MessageComposer @send="sendMessage" @typing="handleTyping" />
       </div>
     </section>
   </ChatLayout>

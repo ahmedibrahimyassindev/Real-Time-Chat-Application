@@ -9,7 +9,7 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 4 core chat UI implemented
+> **Current Status:** Phase 5 real-time UI implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
@@ -17,7 +17,9 @@ component-driven development.
 > authentication screens, protected routes, mock session handling, and a
 > profile page. The core chat screen now supports conversation selection,
 > message rendering, message composition, editing, deletion, and loading
-> older messages.
+> older messages. Simulated real-time events now drive incoming messages,
+> typing indicators, presence, connection state, reconnection behavior, and
+> read-receipt updates.
 
 ---
 
@@ -901,12 +903,12 @@ Logout
 
 ### Phase 5 - Real-Time UI
 
-- [ ] Simulated incoming messages
-- [ ] Typing indicators
-- [ ] Online presence
-- [ ] Read receipts
-- [ ] Connection state
-- [ ] Reconnection behavior
+- [x] Simulated incoming messages
+- [x] Typing indicators
+- [x] Online presence
+- [x] Read receipts
+- [x] Connection state
+- [x] Reconnection behavior
 
 ### Phase 6 - Advanced Messaging
 
@@ -959,9 +961,10 @@ Current implementation status:
 - Phase 2 mock infrastructure is implemented.
 - Phase 3 authentication UI is implemented.
 - Phase 4 core chat UI is implemented.
+- Phase 5 real-time UI is implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Real-time UI behaviors and advanced messaging features have not yet
-  been implemented.
+- Advanced messaging and channel management features have not yet been
+  implemented.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application
