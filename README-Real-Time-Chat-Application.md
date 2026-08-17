@@ -9,7 +9,7 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 9 quality tooling implemented
+> **Current Status:** Phase 10 Docker implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
@@ -27,6 +27,9 @@ component-driven development.
 > real-time delivery.
 > Quality tooling now includes Vitest, Playwright, Storybook, accessibility
 > review notes, performance review notes, and responsive test coverage.
+> Docker support now includes verified production and development image
+> builds, Docker Compose services, nginx SPA routing, and Docker
+> documentation.
 
 ---
 
@@ -954,9 +957,9 @@ Logout
 
 ### Phase 10 - Docker
 
-- [ ] Add Dockerfile
-- [ ] Verify development/production container workflow
-- [ ] Add Docker documentation only after commands are tested
+- [x] Add Dockerfile
+- [x] Verify development/production container workflow
+- [x] Add Docker documentation only after commands are tested
 
 ---
 
@@ -973,8 +976,9 @@ Current implementation status:
 - Phase 7 channels are implemented.
 - Phase 8 notifications are implemented.
 - Phase 9 quality tooling is implemented.
+- Phase 10 Docker support is implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Docker has not yet been implemented.
+- The roadmap items above are complete for the current frontend-only scope.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application
@@ -1005,6 +1009,17 @@ npm run test:e2e
 npm run build
 npm run build-storybook
 ```
+
+Docker:
+
+```bash
+docker compose config
+docker compose --profile dev config
+docker build -t realtime-chat-frontend .
+docker build --target development -t realtime-chat-frontend-dev .
+```
+
+See [Docker documentation](docs/docker.md).
 
 ---
 
