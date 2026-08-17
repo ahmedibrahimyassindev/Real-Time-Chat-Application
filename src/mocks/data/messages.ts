@@ -32,6 +32,36 @@ export const mockMessages: Message[] = [
     createdAt: '2026-08-17T08:55:00.000Z'
   },
   {
+    id: 'message-7',
+    conversationId: 'conversation-general',
+    senderId: 'user-nour',
+    body: 'I added the first pass of notification copy.',
+    status: 'read',
+    reactions: [],
+    attachments: [],
+    createdAt: '2026-08-17T08:10:00.000Z'
+  },
+  {
+    id: 'message-8',
+    conversationId: 'conversation-general',
+    senderId: 'user-sarah',
+    body: 'The empty states should stay direct and actionable.',
+    status: 'read',
+    reactions: [],
+    attachments: [],
+    createdAt: '2026-08-17T08:20:00.000Z'
+  },
+  {
+    id: 'message-9',
+    conversationId: 'conversation-general',
+    senderId: 'user-mohamed',
+    body: 'I will prepare a small search fixture for the next phase.',
+    status: 'read',
+    reactions: [],
+    attachments: [],
+    createdAt: '2026-08-17T08:35:00.000Z'
+  },
+  {
     id: 'message-4',
     conversationId: 'conversation-general',
     senderId: 'user-ahmed',

@@ -1,16 +1,64 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+import ConversationList from '@/components/chat/ConversationList.vue'
+import MessageComposer from '@/components/chat/MessageComposer.vue'
+import MessageList from '@/components/chat/MessageList.vue'
+import { useAuth } from '@/composables/useAuth'
 import ChatLayout from '@/layouts/ChatLayout.vue'
+import { mockUsers } from '@/mocks/data'
+import { useChatStore } from '@/stores/chat.store'
+
+const chatStore = useChatStore()
+const { currentUser } = useAuth()
+
+const activeConversation = computed(() => chatStore.activeConversation)
+
+function sendMessage(body: string) {
+  if (!currentUser.value) {
+    return
+  }
+
+  chatStore.sendMessage(body, currentUser.value.id)
+}
 </script>
 
 <template>
   <ChatLayout>
-    <section class="flex h-full flex-col justify-center px-8">
-      <p class="text-sm font-medium uppercase tracking-wide text-cyan-300">Phase 1</p>
-      <h1 class="mt-3 text-3xl font-semibold text-white">Chat foundation is ready</h1>
-      <p class="mt-4 max-w-xl text-slate-300">
-        Routing, state management, API utilities, validation, and styling are configured. Mock chat
-        infrastructure comes next.
-      </p>
+    <section class="grid min-h-0 grid-cols-[280px_1fr]">
+      <aside class="min-h-0 border-r border-slate-800 bg-slate-950 p-4">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-200">Conversations</h2>
+        </div>
+        <ConversationList
+          :conversations="chatStore.conversations"
+          :active-conversation-id="chatStore.activeConversationId"
+          @select="chatStore.selectConversation"
+        />
+      </aside>
+
+      <div class="grid min-h-0 grid-rows-[64px_1fr_auto]">
+        <header class="flex items-center border-b border-slate-800 px-6">
+          <div>
+            <h1 class="text-base font-semibold text-white">{{ activeConversation?.title }}</h1>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ activeConversation?.memberIds.length ?? 0 }} members
+            </p>
+          </div>
+        </header>
+
+        <MessageList
+          :messages="chatStore.activeMessages"
+          :users="mockUsers"
+          :current-user-id="currentUser?.id ?? ''"
+          :has-older-messages="chatStore.hasOlderMessages"
+          @load-older="chatStore.loadOlderMessages"
+          @edit="chatStore.editMessage"
+          @delete="chatStore.deleteMessage"
+        />
+
+        <MessageComposer @send="sendMessage" />
+      </div>
     </section>
   </ChatLayout>
 </template>
