@@ -9,11 +9,12 @@ with Vue 3, TypeScript, real-time UI behavior, state management,
 server-state synchronization, testing, responsive design, and
 component-driven development.
 
-> **Current Status:** Phase 1 foundation implemented
+> **Current Status:** Phase 2 mock infrastructure implemented
 >
 > The repository contains a Vue 3 + TypeScript + Vite frontend foundation
 > with routing, Pinia, TanStack Query, Axios, Zod, Tailwind CSS, ESLint,
-> and Prettier configured. Chat features are still planned work.
+> Prettier, MSW REST mocks, typed mock data, and a mock WebSocket client.
+> Chat screens and user workflows are still planned work.
 
 ---
 
@@ -870,12 +871,12 @@ Logout
 
 ### Phase 2 - Mock Infrastructure
 
-- [ ] Configure MSW or equivalent REST mocking
-- [ ] Create mock users
-- [ ] Create mock conversations
-- [ ] Create mock channels
-- [ ] Create mock messages
-- [ ] Implement mock WebSocket service
+- [x] Configure MSW or equivalent REST mocking
+- [x] Create mock users
+- [x] Create mock conversations
+- [x] Create mock channels
+- [x] Create mock messages
+- [x] Implement mock WebSocket service
 
 ### Phase 3 - Authentication UI
 
@@ -952,8 +953,9 @@ Logout
 Current implementation status:
 
 - Phase 1 project foundation is implemented.
+- Phase 2 mock infrastructure is implemented.
 - The app can be installed, built, linted, formatted, and previewed.
-- Mock infrastructure and chat features have not yet been implemented.
+- Chat screens and user workflows have not yet been implemented.
 - No Docker commands are documented because a Dockerfile has not yet
   been added.
 - The folder structure above now exists as the baseline application
